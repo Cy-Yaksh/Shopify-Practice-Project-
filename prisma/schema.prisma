@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+model Settings {
+  id            String    @id
+  name          String 
+  description   String?  
+  }
+
+model Wishlist {
+  id             String      @id @default(uuid())
+  customerId     String
+  productId      String
+  productName    String
+  productHandle  String?     // Added to link to the product page
+  productImage   String
+  shop           String
+  collectionId   String?     // null indicates the Default collection
+  collection     Collection? @relation(fields: [collectionId], references: [id])
+  createdAt      DateTime    @default(now())
+}
+
+model Collection {
+  id         String     @id @default(uuid())
+  name       String
+  visibility String     // "public" or "private"
+  customerId String
+  createdAt  DateTime   @default(now())
+  wishlist   Wishlist[] // All wishlist items associated with this collection
+}
+

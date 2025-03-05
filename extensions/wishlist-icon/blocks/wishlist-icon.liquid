@@ -1,0 +1,310 @@
+<!-- wishlist.liquid -->
+<div class="wishlist-inspire__icon">
+  <button type="button" id="wishlist-btn">
+    <svg class="wishlist-inspire__icon--svg" viewBox="0 0 24 24" stroke-width="2" stroke="#000" fill="#fff">
+      <path d="M12 21.35l-1.45-1.32C5.4 15.73 2 12.27 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.77-3.4 7.23-8.55 11.53L12 21.35z"/>
+    </svg>
+    {% if block.settings.text != blank %}
+      <span class="wishlist-inspire__icon--text">{{ block.settings.text }}</span>
+    {% endif %}
+  </button>
+</div>
+<!-- Modal for collection selection -->
+<div id="wishlist-modal" class="wishlist-modal" style="display:none;">
+  <div class="wishlist-modal-content">
+    <h3>Select Collection</h3>
+    <!-- Container for existing collections; will include "Default" plus custom collections -->
+    <div id="existing-collections"></div>
+    <hr>
+    <button id="create-collection-btn">Create New Collection</button>
+    <!-- New collection form -->
+    <div id="new-collection-form" style="display:none;">
+      <input type="text" id="collection-name" placeholder="Collection Name" />
+      <select id="collection-visibility">
+        <option value="private">Private</option>
+        <option value="public">Public</option>
+      </select>
+      <button id="save-collection">Save Collection</button>
+    </div>
+    <button id="cancel-modal">Cancel</button>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const button = document.getElementById("wishlist-btn");
+  const modal = document.getElementById("wishlist-modal");
+  const existingCollectionsDiv = document.getElementById("existing-collections");
+  const createCollectionBtn = document.getElementById("create-collection-btn");
+  const newCollectionForm = document.getElementById("new-collection-form");
+  const saveCollectionBtn = document.getElementById("save-collection");
+  const cancelModalBtn = document.getElementById("cancel-modal");
+  const svg = button.querySelector("svg");
+  
+  // Object to track wishlist status by collection.
+  // Key: collectionId (empty string for Default), Value: true if wishlisted.
+  let productWishlistStatus = {};
+  
+  // Replace this with your actual deployed app URL.
+  const appUrl = "https://overcome-bangladesh-unable-pottery.trycloudflare.com/";
+  
+  // Get product and shop details from Liquid.
+  const customerId = "{{ customer.id }}";
+  const productId = "{{ product.id }}";
+  const productName = "{{ product.title | escape }}";
+  const productHandle = "{{ product.handle }}";
+  const productImage = "{{ product.featured_image | image_url: width: 200 }}";
+  const shop = "{{ shop.permanent_domain }}";
+  
+  // Fetch wishlist entries for this product (across all collections).
+  if (customerId && productId) {
+    fetch(`${appUrl}api/wishlist?customerId=${customerId}&shop=${shop}&productId=${productId}`)
+      .then(response => response.json())
+      .then(result => {
+        result.data.forEach(item => {
+          const key = item.collectionId || "";
+          productWishlistStatus[key] = true;
+        });
+        if (Object.values(productWishlistStatus).some(val => val === true)) {
+          svg.setAttribute("fill", "#000");
+        }
+      })
+      .catch(error => console.error('Error:', error));
+  }
+  
+  // When clicking the heart icon:
+  button.addEventListener("click", function() {
+    if (!customerId) {
+      alert('Please login to add to wishlist');
+      return;
+    }
+    // If product is already wishlisted (in any collection), remove it from the first found collection.
+    if (Object.values(productWishlistStatus).some(val => val === true)) {
+      const collectionKey = Object.keys(productWishlistStatus).find(key => productWishlistStatus[key] === true);
+      submitWishlist({ collectionId: collectionKey, _action: "DELETE" });
+    } else {
+      // Otherwise, open modal. Also, load the collections.
+      loadCollections();
+      modal.style.display = "block";
+    }
+  });
+  let selectedCollectionId = null; // Store selected collection
+
+  function loadCollections() {
+    if (!customerId) return;
+  
+    existingCollectionsDiv.innerHTML = "";
+  
+    fetch(`${appUrl}/api/collection?customerId=${customerId}`)
+      .then((response) => response.json())
+      .then((collections) => {
+        if (collections.length > 0) {
+          collections.forEach((collection) => {
+            const collectionBtn = document.createElement("button");
+            collectionBtn.classList.add("collection-option");
+            collectionBtn.textContent = collection.name;
+            collectionBtn.dataset.collectionId = collection.id;
+  
+            collectionBtn.addEventListener("click", () => {
+              document.querySelectorAll(".collection-option").forEach(btn => btn.classList.remove("active"));
+              collectionBtn.classList.add("active");
+              selectedCollectionId = collection.id;
+            });
+  
+            existingCollectionsDiv.appendChild(collectionBtn);
+          });
+  
+          // Auto-select the first collection
+          selectedCollectionId = collections[0].id;
+          document.querySelector(".collection-option").classList.add("active");
+        } else {
+          const noCollectionsMsg = document.createElement("p");
+          noCollectionsMsg.textContent = "No collections found. You can create one below.";
+          existingCollectionsDiv.appendChild(noCollectionsMsg);
+        }
+  
+        // Add "Default" collection
+        const defaultBtn = document.createElement("button");
+        defaultBtn.classList.add("collection-option");
+        defaultBtn.textContent = "Default";
+        defaultBtn.dataset.collectionId = "";
+        defaultBtn.addEventListener("click", () => {
+          document.querySelectorAll(".collection-option").forEach(btn => btn.classList.remove("active"));
+          defaultBtn.classList.add("active");
+          selectedCollectionId = null; // Default collection has no ID
+        });
+  
+        existingCollectionsDiv.appendChild(defaultBtn);
+      })
+      .catch((error) => {
+        console.error("Error fetching collections:", error);
+        existingCollectionsDiv.innerHTML = "<p>Error loading collections.</p>";
+      });
+  }
+  function saveToWishlist(productId, productName, productImage) {
+    fetch(`${appUrl}/api/wishlist`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerId,
+        productId,
+        productName,
+        productImage,
+        shop,
+        collectionId: selectedCollectionId || null, // Assign to selected collection or default (null)
+      }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        alert("Product added to collection!",data);
+      })
+      .catch(error => console.error("Error adding product:", error));
+  }
+  // Handle clicking on a collection option within the modal.
+  existingCollectionsDiv.addEventListener("click", function(e) {
+    if (e.target.classList.contains("collection-option")) {
+      const selectedCollectionId = e.target.dataset.collectionId;
+      submitWishlist({ collectionId: selectedCollectionId, _action: "CREATE" });
+      modal.style.display = "none";
+    }
+  });
+  
+  // Show new collection form.
+  createCollectionBtn.addEventListener("click", function() {
+    newCollectionForm.style.display = "block";
+  });
+  
+  // Save new collection and add product to it.
+  saveCollectionBtn.addEventListener("click", function() {
+    const collectionName = document.getElementById("collection-name").value;
+    const collectionVisibility = document.getElementById("collection-visibility").value;
+    if (!collectionName) {
+      alert("Please enter a collection name");
+      return;
+    }
+    submitWishlist({ newCollectionName: collectionName, newVisibility: collectionVisibility, _action: "CREATE" });
+    modal.style.display = "none";
+  });
+  
+  // Close modal on cancel.
+  cancelModalBtn.addEventListener("click", function() {
+    modal.style.display = "none";
+  });
+  
+  // Function to add or remove a wishlist entry.
+  function submitWishlist(extraData) {
+    const formdata = new FormData();
+    formdata.append("customerId", customerId);
+    formdata.append("productId", productId);
+    formdata.append("productName", productName);
+    formdata.append("productHandle", productHandle);
+    formdata.append("productImage", productImage);
+    formdata.append("shop", shop);
+    formdata.append("_action", extraData._action || "CREATE");
+    if (extraData.collectionId !== undefined) {
+      formdata.append("collectionId", extraData.collectionId);
+    }
+    if (extraData.newCollectionName) {
+      formdata.append("newCollectionName", extraData.newCollectionName);
+    }
+    if (extraData.newVisibility) {
+      formdata.append("newVisibility", extraData.newVisibility);
+    }
+  
+    fetch(`${appUrl}api/wishlist`, {
+      method: 'POST',
+      body: formdata
+    })
+    .then(response => response.json())
+    .then(result => {
+      if (extraData._action === "CREATE") {
+        productWishlistStatus[extraData.collectionId || ""] = true;
+        svg.setAttribute("fill", "#000");
+        alert('Product added to wishlist');
+      } else {
+        productWishlistStatus[extraData.collectionId || ""] = false;
+        svg.setAttribute("fill", "#fff");
+        alert('Product removed from wishlist');
+      }
+    })
+    .catch(error => console.error('Error:', error));
+  }
+});
+</script>
+
+<style>
+.wishlist-inspire__icon {
+  display: flex;
+  justify-content: center;
+  max-width: 44rem;
+}
+.wishlist-inspire__icon button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.wishlist-inspire__icon--svg {
+  width: 2rem;
+  height: 2rem;
+}
+/* Modal styles */
+.wishlist-modal {
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+}
+.wishlist-modal-content {
+  background: #fff;
+  margin: 10% auto;
+  padding: 20px;
+  width: 300px;
+  border-radius: 4px;
+  text-align: center;
+}
+.collection-option {
+  display: block;
+  margin: 5px 0;
+  padding: 5px;
+  width: 100%;
+  cursor: pointer;
+}
+</style>
+
+
+
+
+{% schema %}
+{
+  "name": "Wishlist icon",
+  "target": "section",
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Product",
+      "autofill": true
+    },
+    {
+      "type": "text",
+      "id": "text",
+      "label": "Text",
+      "default": "Add to wishlist"
+    },
+    {
+      "type": "color",
+      "id": "colour",
+      "label": "Icon Colour",
+      "default": "#ff0000"
+    }
+  ]
+}
+{% endschema %}

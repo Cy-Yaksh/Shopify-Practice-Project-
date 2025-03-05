@@ -1,0 +1,61 @@
+{
+    "product": {
+      "id": 8360778891417,
+      "title": "bundle container",
+      "body_html": "",
+      "vendor": "lubus-test",
+      "product_type": "",
+      "created_at": "2025-02-27T04:42:14-05:00",
+      "handle": "bundle-container",
+      "updated_at": "2025-02-27T04:42:15-05:00",
+      "published_at": "2025-02-27T04:42:14-05:00",
+      "template_suffix": "",
+      "published_scope": "global",
+      "tags": "",
+      "status": "active",
+      "admin_graphql_api_id": "gid://shopify/Product/8360778891417",
+      "variants": [
+        {
+          "id": 45179049967769,
+          "product_id": 8360778891417,
+          "title": "Default Title",
+          "price": "0.00",
+          "position": 1,
+          "inventory_policy": "deny",
+          "compare_at_price": null,
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "created_at": "2025-02-27T04:42:15-05:00",
+          "updated_at": "2025-02-27T04:42:15-05:00",
+          "taxable": true,
+          "barcode": "",
+          "fulfillment_service": "manual",
+          "grams": 0,
+          "inventory_management": "shopify",
+          "requires_shipping": true,
+          "sku": "",
+          "weight": 0,
+          "weight_unit": "kg",
+          "inventory_item_id": 47285171257497,
+          "inventory_quantity": 0,
+          "old_inventory_quantity": 0,
+          "admin_graphql_api_id": "gid://shopify/ProductVariant/45179049967769",
+          "image_id": null
+        }
+      ],
+      "options": [
+        {
+          "id": 10619804942489,
+          "product_id": 8360778891417,
+          "name": "Title",
+          "position": 1,
+          "values": [
+            "Default Title"
+          ]
+        }
+      ],
+      "images": [],
+      "image": null
+    }
+  }
